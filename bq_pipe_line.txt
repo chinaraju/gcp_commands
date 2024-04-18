@@ -1,0 +1,237 @@
+1.bq query --use_legacy_sql=false "create table sales_stg_ds.repurchase_2 (cid STRING, upc STRING, oid STRING, dt STRING, r_dt STRING, prc STRING, qty STRING, amt STRING, r_qty STRING, r_amt STRING, web_prod_id STRING, gmm_desc STRING, parent_mdse_divn_desc STRING, last_modifies_time TIMESTAMP, country_code STRING, entity_code STRING)"
+
+2.bq load  --source_format=CSV --skip_leading_rows=1  bucket_data.table_str gs://china-airlines-v08/AirQuality.csv Rank:String,City:STRING,Country:STRING,2023:STRING,Jan:STRING,Feb:STRING,Mar:STRING,Apr:STRING,May:STRING,Jun:STRING,Jul:STRING,Aug:STRING,Sep:STRING,Oct:STRING,Nov:STRING,Dec:STRING
+
+3.bq mk -t sales_stg_ds.repurchase cid:String,upc:String,oid:String,dt:String,r_dt:String,prc:String,qty:String,amt:String,r_qty:String,r_amt:String,web_prod_id:String,gmm_desc:String,parent_mdse_divn_desc:String,last_modifies_time:timestamp,country_code:String,entity_code:String   
+
+4.
+
+5.
+bq query --use_legacy_sql=false insert into sales_hist_ds.history_table
+SELECT
+  PARSE_NUMERIC(cid AS INT64) AS CUST_ID,
+  PARSE_NUMERIC(upc AS INT64) AS usr_count,
+  PARSE_NUMERIC(oid AS INT64) AS ORD_ID,
+  PARSE_DATE('%Y-%m-%d', dt) AS PURCH_DATE,
+  PARSE_DATE('%Y-%m-%d', r_dt) AS REC_DATE,
+  PARSE_NUMERIC(prc AS FLOAT64) AS PRICE_ITEM,
+  PARSE_NUMERIC(qty AS INT64) AS QTY,
+  PARSE_NUMERIC(amt AS FLOAT64) AS CUST_AMT,
+  PARSE_NUMERIC(r_qty AS INT64) AS REC_QTY,
+  PARSE_NUMERIC(r_amt AS FLOAT64) AS REC_AMT,
+  PARSE_NUMERIC(web_prod_id AS INT64) AS web_prod_id,
+  gmm_desc as GMM_DESC,
+  PARENT_MDSE_DIVN_DESC as PARENT_MDSE_DIVN_DESC,
+  current_timestamp() AS Last_Modifies_Time,
+  '91' as Country_code,
+  'ind' as ENTITY_CODE
+FROM
+  sales_stg_ds.repurchase_2
+
+bq query --use_legacy_sql=false INSERT INTO sales_hist_ds.history_table SELECT safe_CAST(cid AS INT64) AS CUST_ID, safe_CAST(upc AS INT64) AS usr_count,safe_CAST(oid AS INT64) AS ORD_ID, safe_cast(dt as date) AS PURCH_DATE, safe_cast(r_dt as date) AS REC_DATE, safe_CAST(prc AS FLOAT64) AS PRICE_ITEM, safe_CAST(qty AS INT64) AS QTY, safe_CAST(amt AS FLOAT64) AS CUST_AMT,safe_CAST(r_qty AS INT64) AS REC_QTY, safe_CAST(r_amt AS FLOAT64) AS REC_AMT, safe_CAST(web_prod_id AS INT64) AS web_prod_id, GMM_DESC, PARENT_MDSE_DIVN_DESC, CURRENT_TIMESTAMP() AS Last_Modifies_Time, '9' AS Country_code, 'ind' AS ENTITY_CODE FROM sales_stg_ds.repurchase_2
+bq query --use_legacy_sql=false create view sales_view_ds.hist_view as  "select * from sales_hist_ds.history_table where gmm_desc ='BEAUTY'"
+
+bq query --use_legacy_sql=false 'CREATE OR REPLACE TABLE `tidy-elf-417905.chinna_db.airlines_2` AS SELECT * FROM `tidy-elf-417905.chinna_db.airlines`'
+
+
+bq query --use_legecy-sql=false insert into sales_hist_ds.history_table_2 
+select cast(cid as int64) as cust_id,
+cast(upc as int64) as usr_count,
+cast(oid as int64) as ord_id,
+COALESCE(
+    TRY_PARSE_DATE("%m-%d-%Y",dt), 
+    TRY_PARSE_DATE("%d/%m/%Y",dt) 
+  ) AS purch_date,
+coalesce(
+   try_parse_date("%m-%d-%Y",r_dt),
+   try_parse_date("%d/%m/%Y",r_dt)
+) as REC_DATE,
+ safe_CAST(prc AS FLOAT64) AS PRICE_ITEM, safe_CAST(qty AS INT64) AS QTY, safe_CAST(amt AS FLOAT64) AS CUST_AMT,safe_CAST(r_qty AS INT64) AS REC_QTY, safe_CAST(r_amt AS FLOAT64) AS REC_AMT, safe_CAST(web_prod_id AS INT64) AS web_prod_id, GMM_DESC, PARENT_MDSE_DIVN_DESC, CURRENT_TIMESTAMP() AS Last_Modifies_Time, '91' AS Country_code, 'ind' AS ENTITY_CODE FROM sales_stg_ds.repurchase_2
+
+
+bq query --use_legecy-sql=false 'insert into sales_hist_ds.history_table_2 select cast(cid as int64) as cust_id,cast(upc as int64) as usr_count,cast(oid as int64) as ord_id,COALESCE(TRY_PARSE_DATE("%m-%d-%Y",dt), TRY_PARSE_DATE("%d/%m/%Y",dt) ) AS purch_date,coalesce( try_parse_date("%m-%d-%Y",r_dt), try_parse_date("%d/%m/%Y",r_dt) ) as REC_DATE, safe_CAST(prc AS FLOAT64) AS PRICE_ITEM, safe_CAST(qty AS INT64) AS QTY, safe_CAST(amt AS FLOAT64) AS CUST_AMT,safe_CAST(r_qty AS INT64) AS REC_QTY, safe_CAST(r_amt AS FLOAT64) AS REC_AMT, safe_CAST(web_prod_id AS INT64) AS web_prod_id, GMM_DESC, PARENT_MDSE_DIVN_DESC, CURRENT_TIMESTAMP() AS Last_Modifies_Time, '91' AS Country_code, 'ind' AS ENTITY_CODE FROM sales_stg_ds.repurchase_2'
+
+
+ 
+ 
+ #################################################################################################################
+ 
+ 
+	multile date formates to convert to date formate
+	REGEXP_CONTAINS(dt, r'\d{4}-\d{2}-\d{2}') is a function that 
+	checks whether the string dt contains a pattern that matches a date format of YYYY-MM-DD
+	using r before a string literal indicates a "raw" string,
+	
+####################################################################################################################	
+ 
+bq query --use_legacy_sql=false
+ "INSERT INTO sales_hist_ds.history_table_2 
+ SELECT SAFE_CAST(cid AS INT64) AS cust_id, 
+ SAFE_CAST(upc AS INT64) AS usr_count,
+ CASE 
+    WHEN REGEXP_CONTAINS(dt, r'\d{4}-\d{2}-\d{2}') THEN PARSE_DATE('%Y-%m-%d', dt) 
+    WHEN REGEXP_CONTAINS(dt, r'\d{2}-\d{2}-\d{4}') THEN PARSE_DATE('%d-%m-%Y', dt) 
+	WHEN REGEXP_CONTAINS(dt, r'\d{2}/\d{2}/\d{4}') THEN PARSE_DATE('%m/%d/%Y', dt) 
+	ELSE(PARSE_DATE('%m/%d/%Y', dt)) END AS purch_date,
+ CASE
+   WHEN REGEXP_CONTAINS(r_dt, r'\d{2}-\d{2}-\d{4}') THEN PARSE_DATE('%m-%d-%Y', r_dt) 
+   WHEN REGEXP_CONTAINS(r_dt, r'\d{2}/\d{2}/\d{4}') THEN PARSE_DATE('%m/%d/%Y', r_dt) 
+   ELSE (PARSE_DATE('%m/%d/%Y', r_dt)) END AS REC_DATE,
+ SAFE_CAST(prc AS FLOAT64) AS PRICE_ITEM, 
+ SAFE_CAST(qty AS INT64) AS QTY, 
+ SAFE_CAST(amt AS FLOAT64) AS CUST_AMT, 
+ SAFE_CAST(r_qty AS INT64) AS REC_QTY, 
+ SAFE_CAST(r_amt AS FLOAT64) AS REC_AMT, 
+ SAFE_CAST(web_prod_id AS INT64) AS web_prod_id, 
+ GMM_DESC, PARENT_MDSE_DIVN_DESC, 
+ CURRENT_TIMESTAMP() AS Last_Modifies_Time, 
+ '91' AS Country_code, 'ind' AS ENTITY_CODE, 
+ SAFE_CAST(oid AS INT64) AS ord_id
+ FROM sales_stg_ds.repurchase_2"
+ 
+ 
+ ##########################################################################################################
+ 
+   AUDIT TABLE CREATE 
+   
+   create table sales_hist_ds.history_audit(
+   dataset_name string,
+  table_name string,
+  date_audit date,
+  total_record_count int64,
+  audited_by string
+)
+
+bq query --use_legacy_sql create table sales_hist_ds.history_audit( dataset_name String,table_name String,date_audit timestamp,total_record_count int64,audited_by string )
+ 
+bq query --use_legacy_sql insert into sales_hist_ds.history_audit 
+select 'sales_hist_ds' as dataset_name,
+'history_table_2' as table_name,
+current_timestamp() as date_audit,
+count(*) as total_record_count,
+'china raju' as audited_by  
+from sales_hist_ds.history_table_2
+
+
+
+bq query --use_legacy_sql insert into sales_hist_ds.history_audit select 'sales_hist_ds' as dataset_name,'history_table_2' as table_name,current_timestamp() as date_audit,count(*) as total_record_count,'china raju' as audited_by  from sales_hist_ds.history_table_2
+
+bq query --use_legacy_sql=false 
+"INSERT INTO sales_stg_ds.audit_stg (dataset_name, table_name, date_audit,total_record_count, audited_by)
+ VALUES ('hist', 'tab', CURRENT_DATE(), (SELECT COUNT(*) FROM sales_stg_ds.repurchase_2), 'chi')"
+
+bq query --use_legacy_sql=false "INSERT INTO sales_stg_ds.audit_stg (dataset_name, table_name, date_audit,total_record_count, audited_by) VALUES ('hist', 'tab', CURRENT_DATE(), (SELECT COUNT(*) FROM sales_stg_ds.repurchase_2), 'chi')"
+
+bq query --use_legacy_sql=false create view dataset_name.view_name as select * dataset_name.table_name where condition;
+
+
+bq query --use_legacy_sql=false insert into usecase_hist_ds.hist_table 
+select parse_date('%m/%d/%Y',SNAPSHOTDATE_ONE) as SNAPSHOTDATE_ONE,safe_cast(EMPLID as int64) as EMPLID,EMPL_CLASS,
+cast(POSITION_NBR as int64) as POSITION_NBR,POSITION_DESCRIPTION,DEPTID,DIRECOTRATE_DESCRIPTION,
+DEPARTMENT_DESCRIPTION,cast(ACCT_CD as int64) as ACCT_CD,LOCATION,cast(ORG_LEVEL as int64) as ORG_LEVEL,
+cast(L1_EMPLID as int64) as L1_EMPLID,L1_NAME,cast(L1_POSITION_NBR as int64) as L1_POSITION_NBR,
+L1_POSITION_NAME,cast(L2_EMPLID as int64) as L2_EMPLID,L2_NAME,cast(L2_POSITION_NBR as int64) as L2_POSITION_NBR,
+L2_POSITION_NAME,cast(L3_EMPLID as int64) as L3_EMPLID,L3_NAME,cast(L3_POSITION_NBR as int64) as L3_POSITION_NBR,
+L3_POSITION_NAME,cast(LEVEL as int64) as LEVEL,parse_date('%d/%m/%Y',HIRE_DATE) as HIRE_DATE,parse_date('%d/%m/%Y',REHIRE_DT) as REHIRE_DT,
+parse_date('%d/%m/%Y',SERVICE_DT ) as SERVICE_DT,parse_date('%d/%m/%Y',SERVICE_DATE ) as SERVICE_DATE,current_timestamp(),
+'ind' as county_code,'91' as entity_code from usecase_stg_ds.usercase_2
+
+
+bq quer --use_legacy_sql "insert into  usecase_hist_ds.hist_table 
+select
+ parse_date('%d/%m/%Y',SNAPSHOTDATE_ONE) as SNAPSHOTDATE_ONE,
+ cast(EMPLID as int64) as EMPLID,
+ EMPL_CLASS,
+ cast(POSITION_NBR as int64) as POSITION_NBR,
+ POSITION_DESCRIPTION,
+ DEPTID,
+ DIRECOTRATE_DESCRIPTION,
+ DEPARTMENT_DESCRIPTION,
+ cast(ACCT_CD as int64) as ACCT_CD,
+ LOCATION,
+ cast(ORG_LEVEL as int64) as ORG_LEVEL,
+ cast(L1_EMPLID as int64) as L1_EMPLID,
+ L1_NAME,
+ cast(L1_POSITION_NBR as int64) as L1_POSITION_NBR,
+L1_POSITION_NAME,
+cast(L2_EMPLID as int64) as L2_EMPLID,
+L2_NAME,
+cast(L2_POSITION_NBR as int64) as L2_POSITION_NBR,
+L2_POSITION_NAME,
+cast(L3_EMPLID as int64) as L3_EMPLID,
+L3_NAME,
+cast(L3_POSITION_NBR as int64) as L3_POSITION_NBR,
+L3_POSITION_NAME,
+cast(LEVEL as int64) as LEVEL,
+parse_date('%d/%m/%d/%Y',HIRE_DATE) as HIRE_DATE,
+parse_date('%m/%d/%Y',REHIRE_DT) as REHIRE_DT, 
+parse_date('%d/%m/%d/%Y',SERVICE_DT) as SERVICE_DT,
+parse_date('%d/%m/%d/%Y',SERVICE_DATE) as SERVICE_DATE,
+current_timestamp(),
+'91',
+'ind'
+from tidy-elf-417905.usecase_stg_ds.usercase_2
+
+########################################################################################################
+partiton and clustering
+##############################################
+bq mk --table --schema="id:INTEGER,text:STRING,creation_date:TIMESTAMP,
+post_id:INTEGER,user_id:INTEGER,
+user_display_name:STRING,score:INTEGER"
+ --time_partitioning_type=YEAR
+ --time_partitioning_field=creation_date
+ --clustering_fields=id,post_id,score 
+ bucket_data.stack_partition
+ 
+ bq query --use_legacy_sql=false insert into bucket_data.stack_partition select * from bucket_data.stack_table
+ 
+ ################################################################################################################
+ use case -3
+ ###############################
+ 
+ bq query --use-legacy_sql=false insert into  usecase_hist_3.pcm_cards_hist 
+ select
+case 
+  when regexp_contains(SYS_DT,r'\d{1}-\d{2}-\d{4}') then parse_date('%m-%d-%Y',SYS_DT) 
+  when regexp_contains (SYS_DT,r'\d{2}/\d{2}/\d{4}') then parse_date('%d/%m/%Y',SYS_DT)
+  else parse_date('%m/%d/%Y',SYS_DT)
+  end as SYS_DT,
+  parse_time('%H.%M.%S',SYS_TM) as SYS_TM,
+  cast(CREDIT_CARD_NUM as numeric) as CREDIT_CARD_NUM,
+  case 
+  when regexp_contains(TRAN_LOCAL_DT,r'\d{1}-\d{2}-\d{4}') then parse_date('%m-%d-%Y',TRAN_LOCAL_DT) 
+  when regexp_contains (TRAN_LOCAL_DT,r'\d{2}/\d{2}/\d{4}') then parse_date('%d/%m/%Y',TRAN_LOCAL_DT)
+  else parse_date('%m/%d/%Y',TRAN_LOCAL_DT)
+  end as TRAN_LOCAL_DT,
+  parse_time('%H.%M.%S',TRAN_LOCAL_TM) as TRAN_LOCAL_TM,
+  cast(CREDIT_CARD_ORG_ID as int64) as CREDIT_CARD_ORG_ID,
+  PROD_NAME,
+  cast(TRAN_MRCH_TYPE as int64) as TRAN_MRCH_TYPE,r
+  TRAN_MRCH_ID,
+  TRAN_MRCH_NAME,
+  cast(TRAN_TYPE as int64) as TRAN_TYPE,
+  cast(CREDIT_BAL_VAL as int64) as CREDIT_BAL_VAL,
+  TRAN_SYSTM_ACT_VAL,
+  TRAN_FINAL_ACT_VAL,
+  TRAN_REQUST_TYP_ID,
+  TRAN_ACTION_DESC,
+   cast(TRAN_AMT as int64) as TRAN_AMT,
+   cast(TRAN_DCML_NUM as int64) as TRAN_DCML_NUM,
+   cast(TRAN_BILL_AMT as int64) as TRAN_BILL_AMT,
+   cast(TRAN_BILL_CDE as int64) as TRAN_BILL_CDE,
+   cast(ORG_CURR_DCML_NUM as int64) as ORG_CURR_DCML_NUM,
+   cast(TRAN_CRNCY_CDE as int64) as TRAN_CRNCY_CDE,
+   TRAN_ACTN_LNG_DESC,
+   cast(TRAN_ACTION_CDE as int64) as TRAN_ACTION_CDE ,
+   TRAN_POS_DATA_VAL,
+   cast(TRAN_POS_COND_CDE as int64) as TRAN_POS_COND_CDE,
+   cast(CREDIT_LIMIT_AMT as int64) as CREDIT_LIMIT_AMT,
+   ITRAN_CAT_CDE,
+   cast(TRAN_POS_ENT_CDE as numeric) as TRAN_POS_ENT_CDE,
+   ITRAN_TUN_REQ_ID,
+   TRAN_TKN_MSG,
+   TRAN_SUB_DATA,
+   cast(CREDIT_ACC_NUM as numeric) as CREDIT_ACC_NUM,
+   cast(CREDIT_CRD_ID as int64) as CREDIT_CRD_ID,
+   cast(TRAN_PROC_CODE as int64) as TRAN_PROC_CODE
+   from usecase_stg_3.pcm_cards_stg
